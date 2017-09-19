@@ -102,6 +102,27 @@ def get_password(username):
 
     return password
 
+def get_password(website,username):
+    """
+    get password from stored keychain service
+    """
+    password = keyring.get_password(website, username)
+    if not password:
+        print("""You need to store password for this user
+                                        first.""")
+        print("Please enter the password for " + username)
+        store_forget    (website,username)
+        return get_password(website,username)
+
+    return password
+
+def store_forget(website,username):
+    """
+    Store given password for this username to keystore
+    """
+    passwd = getpass.getpass()
+    keyring.set_password(website, username, passwd)
+    click.echo("Password updated successfully")
 
 def login_into_linkedin(driver, username):
     """
@@ -114,7 +135,7 @@ def login_into_linkedin(driver, username):
     submit_form = driver.find_element_by_class_name('login-form')
 #     driver.execute_script("return arguments[0].scrollIntoView();", top)
 #     time.sleep(1000)
-    password = get_password(username)
+    password = get_password('linkedin',username)
 
     # If we have login page we get these fields
     # I know it's a hack but it works
@@ -128,7 +149,7 @@ def login_into_gmail(driver, username):
     """
     Just login to linkedin if it is not already loggedin
     """
-    username = "jr991400@gmail.com"
+#     username = "jr991400@gmail.com"
 #     username = "williamjh567@gmail.com"
     userfield = driver.find_element_by_id('identifierId')
     
@@ -136,7 +157,7 @@ def login_into_gmail(driver, username):
     submit_form = driver.find_element_by_tag_name('form')
 
 #     password = get_password(username)
-    password = "!@#$qwer123456"
+    password = get_password('gmail',username)
 #     password = "!@#$qwer1234"
     # If we have login page we get these fields
     # I know it's a hack but it works
@@ -1430,10 +1451,8 @@ def cli():
 @click.option('--browser', default='phantomjs', help='Browser to run with')
 @click.argument('username')
 @click.argument('scrapdirectory')
-
-
-    
-def crawl(browser, username, scrapdirectory):
+@click.argument('usergmail')
+def crawl(browser, username, scrapdirectory, usergmail):
     """
     Run this crawler with specified username
     """
@@ -1467,7 +1486,7 @@ def crawl(browser, username, scrapdirectory):
         
 #          
         bus.driver.get(GMAIL_URL)
-        login_into_gmail(bus.driver, username)
+        login_into_gmail(bus.driver, usergmail)
         time.sleep(2)
         raw_input("Go on to linked in...")
         bus.driver.get(LINKEDIN_URL)
@@ -1593,21 +1612,86 @@ def crawl(browser, username, scrapdirectory):
                 continue
            
 
+@click.command()
+@click.option('--browser', default='phantomjs', help='Browser to run with')
+@click.argument('username')
+@click.argument('scrapdirectory')
+def fetchaccountlink(browser, username, scrapdirectory):
+    """
+    Run this crawler with specified username
+    """
+
+    # first check and read the input file
+#     all_names = collect_names(inDirectory)
+# 
+#     fieldnames = ['fullname', 'locality', 'industry', 'current summary',
+#                   'past summary', 'education', ]
+#     # then check we can write the output file
+#     # we don't want to complete process and show error about not
+#     # able to write outputs
+#     with open(outfile, 'w') as csvfile:
+#         # just write headers now
+#         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+#         writer.writeheader()
+
+    link_title = './/a[@class="title main-headline"]'
+
+    # now open the browser
+    
+
+    
+        
+    with WebBus(browser) as bus:
+        
+        
+        bus.driver.get(LINKEDIN_URL)
+        
+        time.sleep(1)
+
+  
+        login_into_linkedin(bus.driver, username)
+        path = scrapdirectory +"/2600/missedAccountLink/id"
+        
+        try:
+            f = open(path, 'r')
+            id = int(f.readline().strip()) + 1
+        except IOError:
+            print("First time missing account")
+            id=0
+        basefilenameNoExt = str(id)
+#       edin.com/mynetwork/invitation-manager/sent/?filterCriteria=null']
+        
+           
+        newUrl = 'https://www.linkedin.com/mynetwork/invitation-manager/sent/?filterCriteria=null'
+        bus.driver.get(newUrl)
+    
+        time.sleep(1)
+        try:
+#                  IF VERSION IS CHANGED
+            checkbox = bus.driver.find_element_by_css_selector('label[for="contact-select-checkbox"]')
+            scrapLinkedInAccountLinkSourceFileVersionWith100display(bus,directory,basefilenameNoExt)
+        except NoSuchElementException:
+#                                     ORIGINAL VERSION
+            scrapLinkedInAccountLink(bus,directory,basefilenameNoExt)
+            deleteLinkedInInvitations(bus)
+      
+          
 
 @click.command()
+@click.argument('website')
 @click.argument('username')
-def store(username):
+def store(website,username):
     """
     Store given password for this username to keystore
     """
     passwd = getpass.getpass()
-    keyring.set_password('linkedinpy', username, passwd)
+    keyring.set_password(website, username, passwd)
     click.echo("Password updated successfully")
 
 
 cli.add_command(crawl)
+cli.add_command(fetchaccountlink)
 cli.add_command(store)
-
 
 if __name__ == '__main__':
     cli()

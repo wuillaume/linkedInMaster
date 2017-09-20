@@ -25,6 +25,10 @@ from selenium.common.exceptions import (WebDriverException,
                                         NoSuchElementException)
 from bs4 import BeautifulSoup
 import string
+import glob
+import os
+import difflib
+
 
 
 LINKEDIN_URL = 'https://www.linkedin.com'
@@ -140,181 +144,89 @@ def cli():
 
 
 @click.command()
-@click.option('--browser', default='phantomjs', help='Browser to run with')
-@click.argument('username')
-@click.argument('infile')
-@click.argument('outfile')
+@click.argument('scrapdirectory')
 
 
     
-def crawl(browser, username, infile, outfile):
+def crawl(scrapdirectory):
     """
     Run this crawler with specified username
     """
     
 
-    rootdir = 'listEmailsTreated/totreat2600/treatment'
+    path = scrapdirectory +"/2600/ForVicidial/TableForVicidial_*.csv"
     
-    for subdir, dirs, files in os.walk(rootdir):
-        for file in files:
-            print os.path.join(subdir, file)
-    exit
-                
-    with open('listEmailsTreated/totreat2600/treated/emails0.csv') as fileEmails:
-        linesEmails = fileEmails.readlines()
-                    
-    with open('listEmailsTreated/totreat2600/treatment/0/listNotHaveLI.csv') as fileHavenot:
-        linesNotHave = fileHavenot.readlines()
+    fullVicidial = open(scrapdirectory +'/list_vicidial.csv' , 'r')
+    line = fullVicidial.readline()
+    lineArray = line.split(",")
+    p=0
+    iFirstName = -1
+    iLastName = -1
+    iEmail = -1
+    for item in lineArray:
+        if(item=="first_name"):
+            iFirstName = p
+        if(item=="last_name"):
+            iLastName = p
+        if(item=="email"):
+            iEmail = p
+        p +=1
     
-   
-    f = open('listEmailsTreated/totreat2600/treatment/0/synthesis.csv', 'w') 
-                
-    pNotHave = 0
-    pHave = 0
-                
-    for email in lines:
-        for emailNot in linesNotHave:
-            contact = emailNot.strip().split(',')[1]
-            email = email.strip()
-        print(email + '@@' + contact)
-        if(email == contact):
-            f.write(str(email) + ',Yes')
-            f.write('\n')
-        else:
-            try: 
-                f.write(str(email) + ',No')
-            except:
-                pass
-            f.write('\n')
-            pHave += 1
-    f.write('NEW EMAIL LIST')
-    f.write('\n')
-    f.close()
-    raw_input("Press Enter to continue...")
-                
+    print(iFirstName)
+    print(iLastName)
+    print(iEmail    )
+    
+    g = open(scrapdirectory +'/2600/treatment/matchVicidialLinkedIn.csv', 'w') 
+    for filename in glob.glob(path):
+        directory = os.path.dirname(filename)
+        basefilename = os.path.basename(filename)
+        filename = directory + "/" + basefilename
+        print(filename)
+        basefilenameNoExt = basefilename.replace(".csv", "")
+        basefilenameNoExt = basefilenameNoExt.replace("TableForVicidial_", "")
+        
+        fileEmails=open(filename,'r')
+        emailHaves = fileEmails.readlines()
+        f = open(scrapdirectory +'/2600/treatment/'+basefilenameNoExt+'/matchVicidialLinkedIn.csv', 'w') 
+        
+        for emailhave in emailHaves:
+            fullVicidial = open(scrapdirectory +'/list_vicidial.csv' , 'r')
+            line = fullVicidial.readline()
+            emailhave = emailhave.replace("'", "")
+            notFound=True
+            while(notFound):
+                 line = fullVicidial.readline()
+#                  print(line)
+                 lineArray = line.split(",")
+                 email = lineArray[iEmail]
+#                  print(emailhave.strip()+"||"+email.strip()+"||")
+                 if(emailhave.strip() == email.strip()):
+                    print(emailhave.strip()+"||"+email.strip()+"||")
+
+                    with open(scrapdirectory +'/2600/treatment/'+basefilenameNoExt+'/listContactFull.csv') as fileContact:
+                        linesContact = fileContact.readlines()
+                    similMax =0
+                    lineContact = ""
+                    for contact in linesContact:
+                        contactArray = contact.split(",")
+                        name = contactArray[0]
+                        nameVicidial = lineArray[iFirstName]+' '+lineArray[iLastName]
+                        simil = difflib.SequenceMatcher(None, name, nameVicidial).ratio()
+                        if(simil>similMax):
+                            similMax=simil
+                            lineContact = line.strip()+","+name.strip()+","+contactArray[-2].strip()+","+str(simil)
+                    if(similMax>0):
+                        f.write(lineContact)
+                        f.write('\n')
+                        g.write(lineContact)
+                        g.write('\n')
+                        notFound=False
+                        
+        f.close()
+        raw_input("Press Enter to continue...")
+    g.close()           
                 
               
-                    
-                
-#                 element = bus.driver.find_element_by_tag_name('body')
-#                 element = bus.driver.find_element_by_id('topcard') 
-#                 result = result.get_attribute('outerHTML')
-#                 source_code = element.get_attribute('outerHTML')
-#                 soup = BeautifulSoup(source_code, 'html.parser')
-#                
-# #                 print(soup)
-#                 
-#                 for item in soup.findAll('div',{'role':'main'}):
-#                     for item1 in item.findAll('h1',{ 'clas':'pv-top-card-section__name'}):
-#                         print item1
-#                 print result
-                
-#                 f = open('html_source_code.html', 'w')
-#                  
-#                 f.write(source_code.encode('utf-8'))
-#                 f.close()
-#       
-
-            
-#             
-#             
-# #            search_button = bus.driver.find_element_by_xpath(search_btn)
-# #            search_button.click()
-# 
-#             profiles = []
-# 
-#             # collect all the profile links
-#             results = None
-#             try:
-#                 results = bus.driver.find_element_by_id('results-container')
-#             except NoSuchElementException:
-#                 continue
-#             links = results.find_elements_by_xpath(link_title)
-# 
-#             # get all the links before going through each page
-#             links = [link.get_attribute('href') for link in links]
-#             for link in links:
-#                 # XXX: This whole section should be separated from this method
-#                 # XXX: move try-except to context managers
-#                 bus.driver.get(link)
-# 
-#                 overview = None
-#                 overview_xpath = '//div[@class="profile-overview-content"]'
-#                 try:
-#                     overview = bus.driver.find_element_by_xpath(overview_xpath)
-#                 except NoSuchElementException:
-#                     click.echo("No overview section skipping this user")
-#                     continue
-# 
-#                 # every xpath below here are relative
-#                 fullname = None
-#                 fullname_xpath = './/span[@class="full-name"]'
-#                 try:
-#                     fullname = overview.find_element_by_xpath(fullname_xpath)
-#                 except NoSuchElementException:
-#                     # we store empty fullname : notsure for this
-#                     fullname = ''
-#                 else:
-#                     fullname = fullname.text.strip()
-# 
-#                 locality = None
-#                 try:
-#                     locality = overview.find_element_by_class_name('locality')
-#                 except NoSuchElementException:
-#                     locality = ''
-#                 else:
-#                     locality = locality.text.strip()
-# 
-#                 industry = None
-#                 try:
-#                     industry = overview.find_element_by_class_name('industry')
-#                 except NoSuchElementException:
-#                     industry = ''
-#                 else:
-#                     industry = industry.text.strip()
-# 
-#                 current_summary = None
-#                 csummary_xpath = './/tr[@id="overview-summary-current"]/td'
-#                 try:
-#                     current_summary = overview.find_element_by_xpath(csummary_xpath)
-#                 except NoSuchElementException:
-#                     current_summary = ''
-#                 else:
-#                     current_summary = current_summary.text.strip()
-# 
-#                 past_summary = None
-#                 psummary_xpath = './/tr[@id="overview-summary-past"]/td'
-#                 try:
-#                     past_summary = overview.find_element_by_xpath(psummary_xpath)
-#                 except NoSuchElementException:
-#                     past_summary = ''
-#                 else:
-#                     past_summary = past_summary.text.strip()
-# 
-#                 education = None
-#                 education_xpath = './/tr[@id="overview-summary-education"]/td'
-#                 try:
-#                     education = overview.find_element_by_xpath(education_xpath)
-#                 except NoSuchElementException:
-#                     education = ''
-#                 else:
-#                     education = education.text.strip()
-# 
-#                 data = {
-#                     'fullname': fullname,
-#                     'locality': locality,
-#                     'industry': industry,
-#                     'current summary': current_summary,
-#                     'past summary': past_summary,
-#                     'education': education,
-#                 }
-#                 profiles.append(data)
-# 
-#             with open(outfile, 'a+') as csvfile:
-#                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-#                 writer.writerows(profiles)
-# 
-#             click.echo("Obtained ..." + name)
 
 
 @click.command()
